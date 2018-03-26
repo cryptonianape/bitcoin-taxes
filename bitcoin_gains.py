@@ -244,7 +244,7 @@ class CsvParser(TransactionParser):
                     if transaction is not None:
                         yield transaction
                 except Exception:
-                    print ix, row
+                    print(ix, row)
                     raise
         for transaction in self.finish():
             yield transaction
@@ -266,7 +266,7 @@ class BitstampParser(CsvParser):
         elif type == '2':
             return Transaction(timestamp, 'trade', btc, usd, price, fee)
         else:
-            raise ValueError, type
+            raise(ValueError, type)
 
 class BitstampParser2(CsvParser):
     expected_header = 'Type,Datetime,Account,Amount,Value,Rate,Fee,Sub Type'
@@ -377,7 +377,7 @@ class CoinbaseParser(CsvParser):
             else:
                 prices = re.findall(r'\$\d+\.\d+', note)
                 if len(prices) != 1:
-                    raise ValueError, "Ambiguous or missing price: %s" % note
+                    raise (ValueError, "Ambiguous or missing price: %s" % note)
                 usd = prices[0][1:]
             type = 'trade'
             if 'Paid for' in note or 'Bought' in note:
@@ -505,7 +505,7 @@ class MtGoxParser(CsvParser):
         elif 'USD' in basename:
             self.is_btc = False
         else:
-            raise ValueError, "mtgox must contain BTC or USD"
+            raise(ValueError, "mtgox must contain BTC or USD")
         self.seen_file_count[self.is_btc] += 1
         for t in CsvParser.parse_file(self, filename):
             yield t
@@ -514,7 +514,7 @@ class MtGoxParser(CsvParser):
         ix, timestamp, type, info, value, balance = row
         ix = int(ix)
         if ix in self.seen_transactions[self.is_btc]:
-            raise ValueError, "Duplicate tranaction: %s" % ix
+            raise(ValueError, "Duplicate tranaction: %s" % ix)
         else:
             self.seen_transactions[self.is_btc].add(ix)
         timestamp = time.strptime(timestamp, '%Y-%m-%d %H:%M:%S')
@@ -542,7 +542,7 @@ class MtGoxParser(CsvParser):
         elif type == 'deposit' and self.is_btc:
             return Transaction(timestamp, 'deposit', value, 0, 0, 0, info=info, id=id)
         else:
-            raise ValueError, type
+            raise (ValueError, type)
 
     def merge(self, transactions):
         if len(transactions) == 1:
@@ -565,16 +565,16 @@ class MtGoxParser(CsvParser):
                 else:
                     merged.btc += merged.fee_btc
         except Exception:
-            print len(transactions)
+            print(len(transactions))
             for t in transactions:
-                print t, t.line
-            print merged.__dict__
+                print (t, t.line)
+            print(merged.__dict__)
             raise
         return merged
 
     def check_complete(self):
         if self.seen_file_count[0] != self.seen_file_count[1]:
-            raise ValueError, "Missmatched number of BTC and USD files (%s vs %s)." % tuple(seen_file_count)
+            raise (ValueError, "Missmatched number of BTC and USD files (%s vs %s)." % tuple(seen_file_count))
         if self.seen_file_count[0] == self.seen_file_count[1] == 0:
             return
         usd_or_btc = ['USD', 'BTC']
@@ -589,7 +589,7 @@ class MtGoxParser(CsvParser):
                 for gap_end in range(gap_start, max(transactions)):
                     if gap_end in transactions:
                         break
-                raise ValueError, "Missing transactions in mtgox %s history (%s to %s)." % (usd_or_btc[is_btc], gap_start, gap_end-1)
+                raise (ValueError, "Missing transactions in mtgox %s history (%s to %s)." % (usd_or_btc[is_btc], gap_start, gap_end-1))
 
 class DbDumpParser(TransactionParser):
     # python bitcointools/dbdump.py --wallet-tx
@@ -883,18 +883,18 @@ def fmv(timestamp):
     if date not in prices:
         prev = [d for d in prices if d < date]
         if not prev:
-            raise ValueError, "No price for %s" % date
+            raise(ValueError, "No price for %s" % date)
         else:
             date = max(prev)
     return prices[date]
 
 def fetch_prices(force_download=False):
-    print "Fetching fair market values..."
+    print("Fetching fair market values...")
     for url in reversed(parsed_args.fmv_urls):
         if not url:
             # Empty parameter ignores all previous.
             break
-        print url
+        print (url)
         format = None
         for line in open_cached(url, force_download=force_download):
             line = line.strip()
@@ -909,7 +909,7 @@ def fetch_prices(force_download=False):
                 elif re.match(r'\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d,\d+\.\d*', line):
                     format = 'blockchain'
                 else:
-                    raise ValueError, "Unknown format: %s" % line
+                    raise (ValueError, "Unknown format: %s" % line)
             cols = line.strip().split(',')
             if format == 'bitcoinaverage':
                 date = cols[0].split()[0]
@@ -925,7 +925,7 @@ def fetch_prices(force_download=False):
                 price = cols[1]
             if date not in prices:
                 prices[date] = decimal.Decimal(price)
-    print "Done"
+    print ("Done")
 
 tx_fees = {}
 def tx_fee(tx_hash):
@@ -936,7 +936,7 @@ def tx_fee(tx_hash):
     if tx_hash in tx_fees:
         return decimal.Decimal(tx_fees[tx_hash])
     else:
-        print "Downloading fee for tx", tx_hash
+        print ("Downloading fee for tx", tx_hash)
         fee = decimal.Decimal(open_cached("https://blockchain.info/q/txfee/" + tx_hash).read().strip()) * decimal.Decimal('1e-8')
         tx_fees[tx_hash] = str(fee)
         json.dump(tx_fees, open(tx_fee_file, 'w'), indent=4)
@@ -959,7 +959,7 @@ class RunningReport:
         self.data[time.strftime(self.date_format, timestamp)] = values
     def dump(self, format):
         for date, diff in sorted(self.deltas().items()):
-            print format.format(date=date, **diff)
+            print (format.format(date=date, **diff))
     def deltas(self):
         all = {}
         last = {}
@@ -1077,7 +1077,7 @@ def main(args):
     for file in args.histories:
         for parser in parsers:
             if parser.can_parse(file):
-                print file, parser
+                print (file, parser)
                 for transaction in parser.parse_file(file):
                     transaction.parser = parser
                     if transaction.id is None:
@@ -1088,7 +1088,7 @@ def main(args):
                 parser.reset()
                 break
         else:
-            raise RuntimeError, "No parser for " + file
+            raise (RuntimeError, "No parser for " + file)
     for parser in parsers:
         parser.check_complete()
 
@@ -1113,7 +1113,7 @@ def main(args):
         transfer = Transaction(withdrawal.timestamp, 'transfer', withdrawal.btc, 0, **transaction_kwargs)
         transfer.account = withdrawal.account
         transfer.dest_account = deposit.account
-        print "detected transfer: %s + %s -> %s" % (withdrawal, deposit, transfer)
+        print ("detected transfer: %s + %s -> %s" % (withdrawal, deposit, transfer))
         all.remove(withdrawal)
         all.remove(deposit)
         all.append(transfer)
@@ -1135,7 +1135,7 @@ def main(args):
                     break
             else:
                 if matches:
-                    print "no match on amount", t, matches
+                    print ("no match on amount", t, matches)
 
     # Next try to match based on txids.  This could come first, but would
     # run into complications if transaction histories have been massaged to
@@ -1156,14 +1156,14 @@ def main(args):
                 matches.remove(candidate)
                 replace_with_transfer(t, candidate, fee_btc=t.btc - candidate.btc, txid=t.txid)
             elif matches:
-                print "multiple matches", t, matches
+                print ("multiple matches", t, matches)
 
 
     pprint.pprint(sorted([(key, value) for key, value in deposits.items() if value],
                          key=lambda kv: kv[1][0].timestamp))
     for t in all:
         if t.type not in ('trade', 'transfer'):
-            print t
+            print (t)
 
     total_cost = 0
     account_btc = defaultdict(int)
@@ -1203,7 +1203,7 @@ def main(args):
     for ix, t in enumerate(all):
         if exit:
             break
-        print ix, t
+        print (ix, t)
         timestamp = t.timestamp
         if timestamp > max_timestamp:
             break
@@ -1230,13 +1230,13 @@ def main(args):
                 price = t.price or fmv(t.timestamp)
                 approx_usd = roundd(-price * btc, 2)
                 print
-                print "On %s you %s %s btc (~$%s at %s/btc)." % (
+                print ("On %s you %s %s btc (~$%s at %s/btc)." % (
                     time.strftime("%a, %d %b %Y %H:%M:%S +0000", t.timestamp),
                     ['sent', 'recieved'][t.btc > 0],
                     abs(t.btc),
                     abs(approx_usd),
-                    price)
-                print t.info
+                    price))
+                print (t.info)
                 save_choice = not args.non_interactive
                 if btc == 0:
                     continue
@@ -1287,11 +1287,11 @@ def main(args):
                                        'purchase_date': time.strftime('%Y-%m-%d %H:%M:%S', timestamp) }
 
 
-        print t
+        print (t)
         if btc < 0:
             btc -= t.fee_btc
         account_btc[t.account] += btc
-        print "btc", btc, "usd", usd
+        print ("btc", btc, "usd", usd)
         if btc == 0:
             continue
         elif btc > 0:
@@ -1311,8 +1311,8 @@ def main(args):
                     recent_sells.insert(0, (recent_sell_remainder, recent_sell_buy_remainder))
                 wash_buy, buy = buy.split(recent_sell.btc)
                 loss = recent_sell_buy.usd - recent_sell.usd
-                print "Wash sale", recent_sell, wash_buy
-                print "Originally bought at", recent_sell_buy, "loss", loss
+                print ("Wash sale", recent_sell, wash_buy)
+                print ("Originally bought at", recent_sell_buy, "loss", loss)
                 gains += loss
                 dissallowed_loss += loss
                 wash_buy.dissallowed_loss = loss
@@ -1339,7 +1339,7 @@ def main(args):
                     buy = Lot(t.timestamp, to_sell.btc, 0, t)
                 else:
                     buy = lots[t.account].pop()
-                print buy
+                print (buy)
                 buy, remaining = buy.split(to_sell.btc)
                 sold_lots.append(buy)
                 if remaining:
@@ -1377,11 +1377,11 @@ def main(args):
                 gift_txns.append((t, sold_lots))
         market_price = fmv(t.timestamp)
         total_btc = sum(account_btc.values())
-        print account_btc
-        print "dissallowed_loss", dissallowed_loss
-        print "total_btc", total_btc, "total_cost", total_cost, "market_price", market_price
+        print (account_btc)
+        print ("dissallowed_loss", dissallowed_loss)
+        print ("total_btc", total_btc, "total_cost", total_cost, "market_price", market_price)
         unrealized_gains = market_price * total_btc - total_cost - dissallowed_loss
-        print "gains", gains, "long_term_gains", long_term_gains, "unrealized_gains", unrealized_gains, "total", gains + unrealized_gains
+        print ("gains", gains, "long_term_gains", long_term_gains, "unrealized_gains", unrealized_gains, "total", gains + unrealized_gains)
         print
         by_month.record(t.timestamp, income=income,
                         total_buy=total_buy, total_sell=total_sell,
@@ -1394,79 +1394,79 @@ def main(args):
 
     market_price = fmv(time.gmtime(time.time() - 24*60*60))
     unrealized_gains = market_price * total_btc - total_cost - dissallowed_loss
-    print "total_btc", total_btc, "total_cost", total_cost, "market_price", market_price
-    print "gains", gains, "unrealized_gains", unrealized_gains
+    print ("total_btc", total_btc, "total_cost", total_cost, "market_price", market_price)
+    print ("gains", gains, "unrealized_gains", unrealized_gains)
     print
 
-    print "Income"
+    print ("Income")
     for date, amount in income_txn:
-        print "{date:8} {amount:>12.2f}".format(date=date, amount=amount)
+        print ("{date:8} {amount:>12.2f}".format(date=date, amount=amount))
 
     if args.list_purchases:
         print
-        print "Purchase"
+        print ("Purchase")
         for t in all:
             if t.id in external:
                 data = dict(external[t.id])
                 if data['type'] == 'purchase':
                     data['usd'] = decimal_or_none(data['usd'])
                     data['btc'] = decimal_or_none(data['btc'])
-                    print "{purchase_date:8} {usd:>10.2f}  {btc:>12.8f}  {account:10}   {info} {note}".format(
-                        **data)
+                    print ("{purchase_date:8} {usd:>10.2f}  {btc:>12.8f}  {account:10}   {info} {note}".format(
+                        **data))
 
     if args.list_gifts:
         print
-        print "Gifts"
+        print ("Gifts")
         for t, gifted_lots in gift_txns:
             data = dict(external[t.id])
             data['purchase_date'] = data['purchase_date'].split()[0]
             data['usd'] = decimal_or_none(data['usd'])
             data['btc'] = decimal_or_none(data['btc'])
-            print "{purchase_date:8} {usd:>10.2f}  {btc:>12.8f}  {account:10}   {info} {note}".format(
-                **data)
+            print ("{purchase_date:8} {usd:>10.2f}  {btc:>12.8f}  {account:10}   {info} {note}".format(
+                **data))
             cost_basis = sum(lot.usd + lot.dissallowed_loss for lot in gifted_lots)
-            print "Cost Basis {usd:>10.2f}".format(usd=cost_basis)
+            print ("Cost Basis {usd:>10.2f}".format(usd=cost_basis))
             for lot in gifted_lots:
-                print '\t', lot
+                print ('\t', lot)
 
 
     for account, account_lots in sorted(lots.items()):
         print
-        print account, account_btc[account]
+        print (account, account_btc[account])
         if account_lots:
             cost_basis = sum(lot.usd for lot in account_lots._data)
-            print "cost basis:", round(cost_basis, 2), "fmv:", round(market_price * account_btc[account], 2)
+            print ("cost basis:", round(cost_basis, 2), "fmv:", round(market_price * account_btc[account], 2))
         for lot in account_lots:
-            print lot
+            print (lot)
 
     print
     for account, account_lots in sorted(lots.items()):
         cost_basis = sum(lot.usd for lot in account_lots._data)
-        print account, account_btc[account], "cost basis:", round(cost_basis, 2), "fmv:", round(market_price * account_btc[account], 2)
+        print (account, account_btc[account], "cost basis:", round(cost_basis, 2), "fmv:", round(market_price * account_btc[account], 2))
 
     if transfered_out:
         print
         print
-        print "Transfered out (not yet taxed):"
+        print ("Transfered out (not yet taxed):")
         last_t = None
         for t, lot in transfered_out:
             if last_t is None or t != last_t:
                 print
-                print time.strftime("%Y-%m-%d %H:%M:%S", t.timestamp), t.btc
+                print (time.strftime("%Y-%m-%d %H:%M:%S", t.timestamp), t.btc)
                 if t.info:
-                    print "   ", t.info
+                    print ("   ", t.info)
                 if external[t.id]['note']:
-                    print "   ", external[t.id]['note']
+                    print ("   ", external[t.id]['note'])
                 last_t = t
 
-            print "   ", lot
+            print ("   ", lot)
     print
     print
 
     market_price = fmv(time.gmtime(time.time() - 24*60*60))
     unrealized_gains = market_price * total_btc - total_cost - dissallowed_loss
-    print "total_btc", total_btc, "total_cost", total_cost, "market_price", market_price
-    print "gains", gains, "unrealized_gains", unrealized_gains
+    print ("total_btc", total_btc, "total_cost", total_cost, "market_price", market_price)
+    print ("gains", gains, "unrealized_gains", unrealized_gains)
     print
 
 #    format = "{date:8} {income:>12.2f} {gains:>12.2f} {long_term_gains:>12.2f} {unrealized_gains:>12.2f} {total:>12.2f}"
@@ -1486,11 +1486,11 @@ def main(args):
         format = "{date:8} {income:>12.2f} {total_cost_basis:>12.2f} {total_sell:>12.2f} {gains:>12.2f} {long_term_gains:>12.2f} {long_term_gifts:>12.2f} {unrealized_gains:>12.2f} {total:>12.2f}"
     else:
         format = "{date:8} {income:>12.2f} {total_buy:>12.2f} {total_sell:>12.2f} {gains:>12.2f} {long_term_gains:>12.2f} {long_term_gifts:>12.2f} {unrealized_gains:>12.2f} {total:>12.2f}"
-    print format.replace('.2f', '').format(**{name: ''.join(label.split('\n')[:-1]) for name, label in names.items()})
-    print format.replace('.2f', '').format(**{name: label.split('\n')[-1] for name, label in names.items()})
+    print (format.replace('.2f', '').format(**{name: ''.join(label.split('\n')[:-1]) for name, label in names.items()}))
+    print (format.replace('.2f', '').format(**{name: label.split('\n')[-1] for name, label in names.items()}))
     by_month.dump(format)
     print
-    print "Annual"
+    print ("Annual")
     by_month.consolidate('%Y').dump(format)
     print
     by_month.consolidate('All time').dump(format)
@@ -1505,9 +1505,9 @@ def main(args):
         else:
             need_appraisal_string.formatted = ', '.join(need_appraisal[:-1]) + ", and " + need_appraisal[-1]
         print
-        print "A qualified appraisal is needed for charitable deductions in %s." % need_appraisal_string
+        print ("A qualified appraisal is needed for charitable deductions in %s." % need_appraisal_string)
         if not args.list_gifts:
-            print "Run with --list_gifts for lot details."
+            print ("Run with --list_gifts for lot details.")
         print
 
 
